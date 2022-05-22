@@ -1,0 +1,1 @@
+cmd_/files10/cs446/rt116146/mini-linux/module/caratCOP/carat-cop.ko := ld -r  -m elf_x86_64  --build-id=sha1  -T scripts/module.lds -o /files10/cs446/rt116146/mini-linux/module/caratCOP/carat-cop.ko /files10/cs446/rt116146/mini-linux/module/caratCOP/carat-cop.o /files10/cs446/rt116146/mini-linux/module/caratCOP/carat-cop.mod.o;  true

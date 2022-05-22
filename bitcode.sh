@@ -1,0 +1,1 @@
+get-bc test.ko

@@ -1,0 +1,1 @@
+cmd_/files10/cs446/rt116146/mini-linux/module/test.ko := ld -r  -m elf_x86_64  --build-id=sha1  -T scripts/module.lds -o /files10/cs446/rt116146/mini-linux/module/test.ko /files10/cs446/rt116146/mini-linux/module/test.o /files10/cs446/rt116146/mini-linux/module/test.mod.o;  true
