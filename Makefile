@@ -1,3 +1,4 @@
+.PHONY: pass
 CARAT_FLAGS = "-Xclang -load -Xclang /files10/cs446/rt116146/TexasProtection.so"
 export CARAT_FLAGS
 LINUX = /files10/cs446/rt116146/mini-linux/linux
@@ -15,3 +16,11 @@ clean:
 
 
 
+
+pass:
+	mkdir -p build;
+	cd build; cmake ../pass/; make -j
+
+texas_test: pass
+	clang -Xclang -load -Xclang build/TexasProtection.so -emit-llvm -c -o build/test.bc pass/test.c
+	llvm-dis pass/test.bc
