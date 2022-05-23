@@ -22,5 +22,5 @@ pass:
 	cd build; cmake ../pass/; make -j
 
 texas_test: pass
-	clang -Xclang -load -Xclang build/TexasProtection.so -emit-llvm -c -o build/test.bc pass/test.c
-	llvm-dis pass/test.bc
+	clang -Xclang -load -Xclang build/TexasProtection.so -emit-llvm -c -o build/test.bc test/test.c
+	llvm-dis build/test.bc

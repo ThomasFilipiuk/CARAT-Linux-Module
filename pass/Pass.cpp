@@ -52,7 +52,7 @@ struct TexasProtectionPass : public ModulePass {
 
   std::map<std::string, uint64_t> metrics;
   llvm::FunctionType *guardFunctionType = nullptr;
-  llvm::Value *guardFunction = nullptr;
+  llvm::FunctionCallee guardFunction = nullptr;
 
   TexasProtectionPass() : ModulePass(ID) {}
 
@@ -93,7 +93,7 @@ struct TexasProtectionPass : public ModulePass {
     guardFunctionType = FunctionType::get(
         Type::getVoidTy(ctx), {voidPtrType, int64Type, int32Type}, false);
     guardFunction =
-        M.getOrInsertFunction("texas_guard", guardFunctionType).getCallee();
+        M.getOrInsertFunction("texas_guard", guardFunctionType);
 
     ConstantInt *nonsenseConstant =
         ConstantInt::get(ctx, llvm::APInt(64, 0, false));

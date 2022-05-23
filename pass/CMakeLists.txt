@@ -24,7 +24,6 @@ add_definitions(
 )
 link_directories(${LLVM_LIBRARY_DIRS})
 
-# Prepare the pass to be included in the source tree
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
 
