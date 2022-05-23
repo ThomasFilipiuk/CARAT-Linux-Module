@@ -113,10 +113,6 @@ bool TexasProtectionPass::runOnModule(Module &M) {
       continue;
     }
 
-    if (!F.isDeclaration()) {
-      LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-    }
-
     auto *firstBB = &*F.begin();
     auto *firstInst = &*firstBB->begin();
     std::unordered_map<Instruction *, Guard> toGuard;
@@ -126,22 +122,25 @@ bool TexasProtectionPass::runOnModule(Module &M) {
       // Get the internal pointer recursively (Basically, if we have a GEP,
       // determine if it's from an alloca or not). This may be imperfect w/
       // the access size argument, but that should be used for debugging
-      // anyways
-      while (auto internal = getInternalPointer(pointer)) {
+      // anyways.
+			auto baseptr = pointer;
+      while (auto internal = getInternalPointer(baseptr)) {
         metrics["internal recurse"]++;
-        pointer = internal;
+        baseptr = internal;
       }
-      // Check if the pointer has already been guarded.
 
       // Don't guard alloca instructions. They are on the stack and we will
       // assume it is valid to access them (for optimization reasons). The
       // backend will read and write the stack even if we don't guard it
       // anyways, so it's pointless here.
-      if (isa<AllocaInst>(pointer)) {
+      if (isa<AllocaInst>(baseptr)) {
         flags = 0;
         metrics["stack"]++;
         return;
       }
+
+			// If it wasn't eventually a guard, use the original pointer for guards
+			// to avoid funky geps bypassing protection passes
 
       // If the pointer comes from a place that the runtime guarentees will
       // be valid, we can avoid guarding it.
