@@ -30,7 +30,7 @@ extern "C" {
 #define TEXAS_GUARD_MERGED (1 << 3)
 
 // For the `TexasProtection` pass
-void texas_guard(void *ptr, uint64_t size, int flags);
+void texas_guard(void *ptr, int flags);
 
 #ifdef __cplusplus
 }
