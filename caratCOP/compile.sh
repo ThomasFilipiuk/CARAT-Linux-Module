@@ -1,2 +1,3 @@
-make all CC=gclang V=1
-
+make all CC=clang V=1
+cd user-interface
+make

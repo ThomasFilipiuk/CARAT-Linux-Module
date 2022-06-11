@@ -1,14 +1,19 @@
-CARAT_FLAGS = "-Xclang -load -Xclang /nfs-scratch/ncw9966/TexasProtection.so -Xclang -TexasProtection"
+CARAT_FLAGS = "-Xclang -load -Xclang /files10/cs446/rt116146/mini-linux/module/build/TexasProtection.so"
+
 export CARAT_FLAGS
 LINUX = /files10/cs446/rt116146/mini-linux/linux
 
+obj-m += test.o
 obj-m += carat-cop.o
+#obj-m += caratCOP.o
+#carat-cop-objs := ./src/region.o ./src/policy.o
+
+#ccflags-y = $(CARAT_FLAGS)
 
 all:
-	make -C $(LINUX)/ M=$(PWD) modules CFLAGS=$(CARAT_FLAGS)
-	clang user-space-app.c -o user-space-app
-user-space-app.o: user-space-app.c
-	make -C $(LINUX)/ M=$(PWD) -o
+	make -C $(LINUX)/ M=$(PWD) modules ccflags-y=$(CARAT_FLAGS)
+no-guards:
+	make -C $(LINUX)/ M=$(PWD) modules
 clean:
 	-echo "THIS IS NOT WORKING - CLEAN IT YOURSELF"
 

@@ -4,15 +4,19 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/gfp.h>
 
-extern void texas_guard(void *ptr, int flags);
+//extern void texas_guard(void *ptr, int flags);
 static volatile int guard_test;
 
 static int __init test_init(void) 
 {
 	printk("Hello World\n");
         guard_test = 100;
-        texas_guard((void*)0x12434, 4);
+        int* test_ptr = kmalloc(sizeof(int), GFP_KERNEL);
+        *test_ptr = 32;
+        kvfree(test_ptr);
 	return 0;
 }
 
