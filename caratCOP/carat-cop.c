@@ -51,32 +51,33 @@ typedef struct {
 	uint8_t n :1; // none
 } flags_st;
 
-union carat_region_protect_flags {                                                    
+typedef union carat_region_protect_flags {                                             
 	uint8_t val;
 	flags_st flags;	
-};                                                                                    
+} protect_flags_t;                                                                                    
 
-struct MemoryRegion 
+typedef struct MemoryRegion 
 {
 	uint64_t addr; 
 	size_t len;   // in bytes
 
-	union carat_region_protect_flags protect;
+	protect_flags_t protect;
 
 	// pthread_spinlock_t lock; // Keep a lock for concurrency control?
 
 	struct rb_node node; // node in the rb tree
-};
+} memory_region_t;
 
 
-struct MemoryRegion* lookup_region(struct rb_root *root, uint64_t lookup_addr) {
+memory_region_t* lookup_region(struct rb_root *root, uint64_t lookup_addr) {
        struct rb_node *n = root->rb_node;
-
+       printk("Looking up address %lx\n", lookup_addr); 
        while (n) {
-	       struct MemoryRegion *data = container_of(n, struct MemoryRegion, node);
+	       memory_region_t *data = container_of(n, memory_region_t, node);
 	       
 	       uint64_t start = data->addr;
-	       uint64_t end = data->addr + data->len; // might run into an error here (uint64_t + size_t)
+	       uint64_t end = data->addr + data->len;
+               printk("start: %lx\nend: %lx", start, end);
 
 	       if (lookup_addr < start) {
 		       n = n->rb_left;
@@ -90,15 +91,16 @@ struct MemoryRegion* lookup_region(struct rb_root *root, uint64_t lookup_addr) {
        return NULL; // if nothing was found :(
 }       
 
-int insert_region(struct rb_root *root, struct rb_node *other) {
+int insert_region(struct rb_root *root, memory_region_t* new_region) {
 	struct rb_node **n = &(root->rb_node);
 	struct rb_node *parent = NULL;
+        long other_addr = new_region->addr;
+        printk("Begin inserting region\n");
+        while (*n) {
+            printk("Looping\n");
+		memory_region_t *curr_region = container_of(*n, memory_region_t, node);
 
-	while (*n) {
-		struct MemoryRegion *curr_region = container_of(*n, struct MemoryRegion, node);
-		struct MemoryRegion *other_region = container_of(other, struct MemoryRegion, node);
-
-		long res = (long)curr_region->addr - (long)other_region->addr;
+		long res = (long)curr_region->addr - other_addr;
 		parent = *n;
 
 		if (res < 0) {
@@ -109,9 +111,9 @@ int insert_region(struct rb_root *root, struct rb_node *other) {
 			return 0;
 		}
 	}
-
-	rb_link_node(other, parent, n);
-	rb_insert_color(other, root);
+        printk("End of while loop\n");
+	rb_link_node(&new_region->node, parent, n);
+	rb_insert_color(&new_region->node, root);
 	return 1;
 }
 
@@ -143,11 +145,11 @@ void list_to_tree(struct rb_root *root, node_t *list) {
 	// 	insert_region(root, memoryRegion->node);
 	// 	list = list.next;	
 	while (list != NULL) {
-		struct MemoryRegion* region = NULL;
+                memory_region_t* region = kmalloc(sizeof(memory_region_t), GFP_KERNEL);
 		region->addr = list->addr;
 		region->len = list->len;
 		region->protect.val = list->flags;
-		insert_region(root, &region->node);
+		insert_region(root, region);
 		list = list->next;
 	}
 
@@ -164,18 +166,19 @@ int check_protections(int access, flags_st flags) {
 // TODO: Check permissions of address with RB tree
 void texas_guard(void *ptr, int flags)
 {
-    printk("Checking address: 0x%x64", (unsigned long)ptr);
-    // WRITE ME
-    /*
-    struct MemoryRegion *found = lookup_region(test_policy.region_map, (uint64_t) ptr); // need to pass in policy->memory_map
-    if (found != NULL) {
+    uint64_t addr = (uint64_t) ptr;
+    printk("Checking address: %lx", addr);
+
+    // need to pass in policy->memory_map
+    memory_region_t *found = lookup_region(test_policy.region_map, addr);
+    if (found) {
     	if (!check_protections(flags, found->protect.flags)) {
-     	    printk("Disallowed memory access on address: 0x%x64", (uint64_t) ptr);
+     	    printk("Disallowed memory access on address: %lx", addr);
 	}
     	return;
     }
-    */
-    printk("Could not find a policy for memory address 0x%x64", (uint64_t) ptr);
+    
+    printk("Could not find a policy for memory address %lx", addr);
     return;
 }
 
@@ -191,6 +194,7 @@ static ssize_t input_policy(struct file *file, const char __user *ubuf, size_t c
         u_int64_t user_input;
         node_t* policy;
 	char buf[BUF_SIZE];
+        struct rb_root* root;
         
 	if (*ppos > 0 || count > BUF_SIZE) {
 		return -EFAULT;
@@ -208,18 +212,19 @@ static ssize_t input_policy(struct file *file, const char __user *ubuf, size_t c
 	}
 
         policy = (node_t*)user_input;
-/*
-	struct rb_root *root = NULL;
 
+	root = kmalloc(sizeof(struct rb_root), GFP_KERNEL);
+        *root = RB_ROOT;
+        
 	list_to_tree(root, policy);
 
-	test_policy = (policy_t) {1, root};
-*/
+	test_policy = (policy_t){ .moduleId=1, .region_map=root };
+
         // WRITE ME
         // Turn the policy linked list into a policy rbtree
         printk("policy addr: %lx", policy->addr);
         printk("policy len: %lx", policy->len);
-        printk("policy addr: %x", policy->flags);
+        printk("policy flags: %x", policy->flags);
 	c = strlen(buf);
 	*ppos = c;
 	return c;

@@ -10,13 +10,13 @@
 #define BUF_SIZE 100
 #define MOD_NAME "user-mod-test"
 
-struct Node
+typedef struct Node
 {
 	u_int64_t addr;
 	u_int64_t len;
 	u_int8_t flags;
 	struct Node* next;
-};
+} node_t;
 
 int main(int argc, char* argv[]) {
 
@@ -69,10 +69,10 @@ int main(int argc, char* argv[]) {
          * pass pointer to module
          */
 	
-	struct Node *test_ptr = (struct Node *) malloc(sizeof(struct Node)); // malloc the ptr
+	node_t *test_ptr = (node_t*) malloc(sizeof(node_t)); // malloc the ptr
 
-	test_ptr->addr = 0x0000000000000001; // fill in Node
-	test_ptr->len = 0x0000ffffffffffff;
+	test_ptr->addr = 0x0000000000000000; // fill in Node
+	test_ptr->len = 0xffffffffffffffff; // entire address space
 	test_ptr->flags = 0x10;
 	test_ptr->next = NULL;	
 
