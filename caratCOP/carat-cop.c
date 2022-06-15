@@ -17,7 +17,16 @@
 #define HAVE_PROC_OPS
 #endif
 
+// Toggle printing debugging messages (1 = true)
+#define DEBUG_ENABLE 1
 
+#if DEBUG_ENABLE
+#define DEBUG(fmt, args...) printk("DEBUG: " fmt, ##args);
+#else
+#define DEBUG(fmt, args...)
+#endif
+
+// The procfs directory entry that we use for IO to/from user space
 static struct proc_dir_entry *ent;
 
 
@@ -75,13 +84,13 @@ typedef struct MemoryRegion
 
 memory_region_t* lookup_region(struct rb_root *root, uint64_t lookup_addr) {
        struct rb_node *n = root->rb_node;
-       printk("Looking up address %lx\n", lookup_addr); 
+       DEBUG("Looking up address %lx\n", lookup_addr); 
        while (n) {
 	       memory_region_t *data = container_of(n, memory_region_t, node);
 	       
 	       uint64_t start = data->addr;
 	       uint64_t end = data->addr + data->len;
-               printk("start: %lx\nend: %lx", start, end);
+               DEBUG("start: %lx\nend: %lx", start, end);
 
 	       if (lookup_addr < start) {
 		       n = n->rb_left;
@@ -99,9 +108,9 @@ int insert_region(struct rb_root *root, memory_region_t* new_region) {
 	struct rb_node **n = &(root->rb_node);
 	struct rb_node *parent = NULL;
         long other_addr = new_region->addr;
-        printk("Begin inserting region\n");
+        DEBUG("Begin inserting region\n");
         while (*n) {
-            printk("Looping\n");
+            DEBUG("Looping\n");
 		memory_region_t *curr_region = container_of(*n, memory_region_t, node);
 
 		long res = (long)curr_region->addr - other_addr;
@@ -115,7 +124,7 @@ int insert_region(struct rb_root *root, memory_region_t* new_region) {
 			return 0;
 		}
 	}
-        printk("End of while loop\n");
+        DEBUG("End of while loop\n");
 	rb_link_node(&new_region->node, parent, n);
 	rb_insert_color(&new_region->node, root);
 	return 1;
@@ -167,21 +176,21 @@ int check_protections(int access, u_int8_t flags) {
 void texas_guard(void *ptr, int flags)
 {
     uint64_t addr = (uint64_t) ptr;
-    printk("Checking address: %lx", addr);
+    DEBUG("Checking address: %lx", addr);
 
     // need to pass in policy->memory_map
     memory_region_t *found = lookup_region(test_policy.region_map, addr);
     if (found) {
     	if (!check_protections(flags, found->protect)) {
-     	    printk("Disallowed memory access on address: %lx", addr);
+     	    DEBUG("Disallowed memory access on address: %lx", addr);
 	}
         else {
-            printk("Memory access allowed at addres: %lx", addr);
+            DEBUG("Memory access allowed at address: %lx", addr);
         }
     	return;
     }
     
-    printk("Could not find a policy for memory address %lx", addr);
+    DEBUG("Could not find a policy for memory address %lx", addr);
     return;
 }
 
@@ -190,7 +199,7 @@ EXPORT_SYMBOL(texas_guard);
 
 // Input policy
 // Provides a way for the user to pass a policy to this module via procfs interface
-// TODO: Test interface, possibly switch to ioctl instead
+// TODO: possibly switch to ioctl instead?
 static ssize_t input_policy(struct file *file, const char __user *ubuf, size_t count, loff_t *ppos)
 {
         int num, c;
@@ -198,6 +207,8 @@ static ssize_t input_policy(struct file *file, const char __user *ubuf, size_t c
         node_t* policy;
 	char buf[BUF_SIZE];
         struct rb_root* root;
+
+        DEBUG("Reading policy");
         
 	if (*ppos > 0 || count > BUF_SIZE) {
 		return -EFAULT;
@@ -223,20 +234,58 @@ static ssize_t input_policy(struct file *file, const char __user *ubuf, size_t c
 
 	test_policy = (policy_t){ .moduleId=1, .region_map=root };
 
-        // WRITE ME
-        // Turn the policy linked list into a policy rbtree
-        printk("policy addr: %lx", policy->addr);
-        printk("policy len: %lx", policy->len);
-        printk("policy flags: %x", policy->flags);
+        DEBUG("Policy read complete");
 	c = strlen(buf);
 	*ppos = c;
 	return c;
 }
 
+// Output policy
+// Provides a way for the user to see what policies are currently stored in this module
+static ssize_t output_policy(struct file *file, char __user *ubuf,size_t count, loff_t *ppos) 
+{
+	char buf[BUF_SIZE];
+	int len=0;
+
+        if(*ppos > 0 || count < BUF_SIZE){
+            DEBUG("Policy output failed");
+            return 0;
+        }
+        
+        DEBUG("Outputting policy to user");
+
+        // Read contents of policy RB tree in reverse order so as to construct
+        // a linked list for the user in sorted order
+        struct rb_node* node;
+        node_t* output_policy = NULL;
+        
+        for (node = rb_last(test_policy.region_map); node; node = rb_prev(node)){
+            node_t* new_node = kmalloc(sizeof(node_t), GFP_USER);
+            
+            new_node->addr = rb_entry(node, memory_region_t, node)->addr;
+	    new_node->len = rb_entry(node, memory_region_t, node)->len;
+	    new_node->flags = rb_entry(node, memory_region_t, node)->protect;
+            new_node->next = output_policy;
+
+            output_policy = new_node;
+            
+        }
+        printk("pointer: %lx", output_policy);
+	len += sprintf(buf, "%lx", output_policy);
+	
+	if(copy_to_user(ubuf,buf,len))
+		return -EFAULT;
+
+        DEBUG("Output complete");
+        
+	*ppos = len;
+	return len;
+}
+
 #ifdef HAVE_PROC_OPS                  
 static struct proc_ops myops =        
 {                                     
-    //.proc_read = myread,          
+        .proc_read = output_policy,          
 	.proc_write = input_policy,        
 };                                    
                                       
@@ -244,7 +293,7 @@ static struct proc_ops myops =
 static struct file_operations myops = 
 {                                     
 	.owner = THIS_MODULE,         
-	//.read = myread,               
+	.read = output_policy,               
 	.write = input_policy,             
 };                                    
 #endif 
@@ -252,14 +301,14 @@ static struct file_operations myops =
 static int __init test_init(void)
 {
         ent = proc_create("policydev", 0660, NULL, &myops);
-	printk("Hello World\n");
+	DEBUG("Hello World\n");
 	return 0;
 }
 
 static void __exit test_exit(void)
 {
 	proc_remove(ent);
-	printk("Goodbye World\n");
+	DEBUG("Goodbye World\n");
 }
 
 

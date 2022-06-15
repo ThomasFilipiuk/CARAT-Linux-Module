@@ -28,7 +28,8 @@ int main(int argc, char* argv[]) {
         printf("Usage:\n0 to test passing basic long\n" 
                 "1 to test passing pointer cast as long\n"
                 "2 to test passing RB tree policy struct pointer\n"
-                "3 to test passing policy with multiple nodes\n"); 
+                "3 to test passing policy with multiple nodes\n"
+                "4 to test reading policy from module\n"); 
         return -1;
         }
 
@@ -140,5 +141,37 @@ int main(int argc, char* argv[]) {
         int fd = open("/proc/policydev", O_RDWR);
 	write(fd, buf, len);
     }
+    else if (input == 4){
+        char buf[BUF_SIZE];
+        u_int64_t output;
+        node_t* policy;
+        int num, region_num = 0;
+        int fd = open("/proc/policydev", O_RDWR);
+        
+	read(fd, buf, BUF_SIZE);
+        num = sscanf(buf, "%lx", &output); 
+        if (num != 1) {
+            printf("Scan failed");
+            return -1;
+        }
+
+        policy = (node_t*)output;
+        printf("pointer: %lx\n", policy); 
+        while (policy){
+            printf("Region %d\n"
+                   "Address: %lx\n"
+                   "Length: %lx\n"
+                   "Flags: %d\n",
+                   region_num,
+                   policy->addr,
+                   policy->len,
+                   policy->flags);
+            region_num++;
+            policy = policy->next;
+        }
+        
+
+    }
+    
     return 0;
 }	
