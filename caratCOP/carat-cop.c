@@ -9,6 +9,9 @@
 #include <asm/uaccess.h>
 
 #define BUF_SIZE 100
+#define READABLE 1
+#define WRITABLE 2
+#define EXECUTABLE 4
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
 #define HAVE_PROC_OPS
@@ -16,7 +19,7 @@
 
 
 static struct proc_dir_entry *ent;
-// struct rb_root memory_map;
+
 
 /*
  *
@@ -43,7 +46,7 @@ typedef struct carat_memory_region_policy {
 
 // Global variable for storing the policy of test.ko
 policy_t test_policy;
-
+/* Using bitfields won't work because the location of the fields aren't deterministic
 typedef struct {
 	uint8_t r :1; // read
 	uint8_t w :1; // write
@@ -54,14 +57,15 @@ typedef struct {
 typedef union carat_region_protect_flags {                                             
 	uint8_t val;
 	flags_st flags;	
-} protect_flags_t;                                                                                    
+} protect_flags_t;
+*/
 
 typedef struct MemoryRegion 
 {
 	uint64_t addr; 
 	size_t len;   // in bytes
 
-	protect_flags_t protect;
+	u_int8_t protect;
 
 	// pthread_spinlock_t lock; // Keep a lock for concurrency control?
 
@@ -139,16 +143,12 @@ typedef struct Node
 } node_t;
 
 void list_to_tree(struct rb_root *root, node_t *list) {
-	// WRITE ME
-	// while list != NULL
-	// 	init MemoryRegion (kmalloc)
-	// 	insert_region(root, memoryRegion->node);
-	// 	list = list.next;	
+		
 	while (list != NULL) {
                 memory_region_t* region = kmalloc(sizeof(memory_region_t), GFP_KERNEL);
 		region->addr = list->addr;
 		region->len = list->len;
-		region->protect.val = list->flags;
+		region->protect = list->flags;
 		insert_region(root, region);
 		list = list->next;
 	}
@@ -156,9 +156,9 @@ void list_to_tree(struct rb_root *root, node_t *list) {
 	return;
 }
 
-int check_protections(int access, flags_st flags) {
-	// WRITE ME
-	return 0;	
+int check_protections(int access, u_int8_t flags) {
+    // Mask access flags against protect flags, compare to original access flags
+    return (access & flags) == access;	
 }
 
 // Texas Guard
@@ -172,9 +172,12 @@ void texas_guard(void *ptr, int flags)
     // need to pass in policy->memory_map
     memory_region_t *found = lookup_region(test_policy.region_map, addr);
     if (found) {
-    	if (!check_protections(flags, found->protect.flags)) {
+    	if (!check_protections(flags, found->protect)) {
      	    printk("Disallowed memory access on address: %lx", addr);
 	}
+        else {
+            printk("Memory access allowed at addres: %lx", addr);
+        }
     	return;
     }
     

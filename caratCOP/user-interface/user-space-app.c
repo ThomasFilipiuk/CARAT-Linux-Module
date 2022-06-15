@@ -10,6 +10,10 @@
 #define BUF_SIZE 100
 #define MOD_NAME "user-mod-test"
 
+#define READABLE 1
+#define WRITABLE 2
+#define EXECUTABLE 4
+
 typedef struct Node
 {
 	u_int64_t addr;
@@ -23,7 +27,8 @@ int main(int argc, char* argv[]) {
     if (argc != 2){
         printf("Usage:\n0 to test passing basic long\n" 
                 "1 to test passing pointer cast as long\n"
-                "2 to test passing RB tree policy struct pointer\n"); 
+                "2 to test passing RB tree policy struct pointer\n"
+                "3 to test passing policy with multiple nodes\n"); 
         return -1;
         }
 
@@ -63,7 +68,7 @@ int main(int argc, char* argv[]) {
         char buf[BUF_SIZE];
         int len=0;
         
-        /* WRITE ME
+        /* 
          * malloc a pointer to a Node struct
          * fill in Node
          * pass pointer to module
@@ -73,8 +78,62 @@ int main(int argc, char* argv[]) {
 
 	test_ptr->addr = 0x0000000000000000; // fill in Node
 	test_ptr->len = 0xffffffffffffffff; // entire address space
-	test_ptr->flags = 0x10;
+	test_ptr->flags = READABLE | EXECUTABLE;
 	test_ptr->next = NULL;	
+
+        len += sprintf(buf, "%ld", test_ptr);
+
+        int fd = open("/proc/policydev", O_RDWR);
+	write(fd, buf, len);
+    }
+    else if (input == 3){
+        char buf[BUF_SIZE];
+        int len=0;
+        
+        /* 
+         * malloc a pointers to Node structs
+         * create in linked list
+         * pass head pointer to module
+         */
+	
+	node_t *test_ptr = (node_t*) malloc(sizeof(node_t)); 
+        node_t *test_ptr_2 = (node_t*) malloc(sizeof(node_t));
+        node_t *test_ptr_3 = (node_t*) malloc(sizeof(node_t));
+        node_t *test_ptr_4 = (node_t*) malloc(sizeof(node_t));
+        node_t *test_ptr_5 = (node_t*) malloc(sizeof(node_t));
+
+        // Bottom 1/16 of addresses have no permissions
+	test_ptr->addr = 0x0000000000000000; 
+	test_ptr->len = 0x0fffffffffffffff; 
+	test_ptr->flags = 0;
+	test_ptr->next = test_ptr_2;
+
+        // Rest of first 1/2 of addresses have full permissions
+        test_ptr_2->addr = 0x1000000000000000; 
+	test_ptr_2->len = 0x6fffffffffffffff; 
+	test_ptr_2->flags = READABLE | WRITABLE | EXECUTABLE;
+	test_ptr_2->next = test_ptr_3;
+
+        // Addresses 0x8000... to 0xF000... have write permissions
+        test_ptr_3->addr = 0x8000000000000000; 
+	test_ptr_3->len = 0x6fffffffffffffff; 
+	test_ptr_3->flags = WRITABLE;
+	test_ptr_3->next = test_ptr_4;
+
+        // Addresses 0xF00... to 0xFFFFFFFF00000000 - 1 have read permissions
+        test_ptr_4->addr = 0xF000000000000000; 
+	test_ptr_4->len = 0x0FFFFFFEFFFFFFFF; 
+	test_ptr_4->flags = READABLE;
+	test_ptr_4->next = test_ptr_5;
+
+        // The top addresses have execute permissions
+        test_ptr_5->addr = 0xFFFFFFFF00000000; 
+	test_ptr_5->len = 0x00000000FFFFFFFF; 
+	test_ptr_5->flags = EXECUTABLE;
+	test_ptr_5->next = NULL;
+
+
+        
 
         len += sprintf(buf, "%ld", test_ptr);
 
