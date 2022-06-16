@@ -8,7 +8,7 @@
 #include <linux/rbtree.h>
 #include <asm/uaccess.h>
 
-#define BUF_SIZE 100
+#define BUF_SIZE 1000
 #define READABLE 1
 #define WRITABLE 2
 #define EXECUTABLE 4
@@ -110,7 +110,6 @@ int insert_region(struct rb_root *root, memory_region_t* new_region) {
         long other_addr = new_region->addr;
         DEBUG("Begin inserting region\n");
         while (*n) {
-            DEBUG("Looping\n");
 		memory_region_t *curr_region = container_of(*n, memory_region_t, node);
 
 		long res = (long)curr_region->addr - other_addr;
@@ -245,7 +244,7 @@ static ssize_t input_policy(struct file *file, const char __user *ubuf, size_t c
 static ssize_t output_policy(struct file *file, char __user *ubuf,size_t count, loff_t *ppos) 
 {
 	char buf[BUF_SIZE];
-	int len=0;
+	int len=0, num=0;
 
         if(*ppos > 0 || count < BUF_SIZE){
             DEBUG("Policy output failed");
@@ -254,25 +253,20 @@ static ssize_t output_policy(struct file *file, char __user *ubuf,size_t count, 
         
         DEBUG("Outputting policy to user");
 
-        // Read contents of policy RB tree in reverse order so as to construct
-        // a linked list for the user in sorted order
+        // Read contents of policy RB tree in order and print to buffer
         struct rb_node* node;
-        node_t* output_policy = NULL;
-        
-        for (node = rb_last(test_policy.region_map); node; node = rb_prev(node)){
-            node_t* new_node = kmalloc(sizeof(node_t), GFP_USER);
-            
-            new_node->addr = rb_entry(node, memory_region_t, node)->addr;
-	    new_node->len = rb_entry(node, memory_region_t, node)->len;
-	    new_node->flags = rb_entry(node, memory_region_t, node)->protect;
-            new_node->next = output_policy;
 
-            output_policy = new_node;
+        
+        for (node = rb_first(test_policy.region_map); node; node = rb_next(node)){
+            
+            memory_region_t* curr_region = container_of(node, memory_region_t, node);
+            len += sprintf(buf+len, "Region %d addr: %lx\n", num, curr_region->addr);
+            len += sprintf(buf+len, "Region %d len: %lx\n", num, curr_region->len);
+            len += sprintf(buf+len, "Region %d flags: %x\n", num, curr_region->protect);
+            num++;
             
         }
-        printk("pointer: %lx", output_policy);
-	len += sprintf(buf, "%lx", output_policy);
-	
+        
 	if(copy_to_user(ubuf,buf,len))
 		return -EFAULT;
 

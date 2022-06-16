@@ -7,7 +7,7 @@
 
 
 
-#define BUF_SIZE 100
+#define BUF_SIZE 1000
 #define MOD_NAME "user-mod-test"
 
 #define READABLE 1
@@ -149,7 +149,8 @@ int main(int argc, char* argv[]) {
         int fd = open("/proc/policydev", O_RDWR);
         
 	read(fd, buf, BUF_SIZE);
-        num = sscanf(buf, "%lx", &output); 
+        printf(buf);
+        /*num = sscanf(buf, "%lx", &output); 
         if (num != 1) {
             printf("Scan failed");
             return -1;
@@ -169,7 +170,7 @@ int main(int argc, char* argv[]) {
             region_num++;
             policy = policy->next;
         }
-        
+*/      
 
     }
     
