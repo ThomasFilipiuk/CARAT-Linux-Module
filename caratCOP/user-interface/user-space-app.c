@@ -115,16 +115,16 @@ int main(int argc, char* argv[]) {
 	test_ptr_2->flags = READABLE | WRITABLE | EXECUTABLE;
 	test_ptr_2->next = test_ptr_3;
 
-        // Addresses 0x8000... to 0xF000... have write permissions
+        // Addresses 0x8000... to 0xF000... have read permissions
         test_ptr_3->addr = 0x8000000000000000; 
 	test_ptr_3->len = 0x6fffffffffffffff; 
-	test_ptr_3->flags = WRITABLE;
+	test_ptr_3->flags = READABLE;
 	test_ptr_3->next = test_ptr_4;
 
-        // Addresses 0xF00... to 0xFFFFFFFF00000000 - 1 have read permissions
+        // Addresses 0xF00... to 0xFFFFFFFF00000000 - 1 have write permissions
         test_ptr_4->addr = 0xF000000000000000; 
 	test_ptr_4->len = 0x0FFFFFFEFFFFFFFF; 
-	test_ptr_4->flags = READABLE;
+	test_ptr_4->flags = WRITABLE;
 	test_ptr_4->next = test_ptr_5;
 
         // The top addresses have execute permissions
@@ -143,34 +143,11 @@ int main(int argc, char* argv[]) {
     }
     else if (input == 4){
         char buf[BUF_SIZE];
-        u_int64_t output;
-        node_t* policy;
-        int num, region_num = 0;
         int fd = open("/proc/policydev", O_RDWR);
         
 	read(fd, buf, BUF_SIZE);
         printf(buf);
-        /*num = sscanf(buf, "%lx", &output); 
-        if (num != 1) {
-            printf("Scan failed");
-            return -1;
-        }
-
-        policy = (node_t*)output;
-        printf("pointer: %lx\n", policy); 
-        while (policy){
-            printf("Region %d\n"
-                   "Address: %lx\n"
-                   "Length: %lx\n"
-                   "Flags: %d\n",
-                   region_num,
-                   policy->addr,
-                   policy->len,
-                   policy->flags);
-            region_num++;
-            policy = policy->next;
-        }
-*/      
+        
 
     }
     

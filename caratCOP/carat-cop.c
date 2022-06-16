@@ -107,17 +107,17 @@ memory_region_t* lookup_region(struct rb_root *root, uint64_t lookup_addr) {
 int insert_region(struct rb_root *root, memory_region_t* new_region) {
 	struct rb_node **n = &(root->rb_node);
 	struct rb_node *parent = NULL;
-        long other_addr = new_region->addr;
+        u_int64_t new_addr = new_region->addr;
         DEBUG("Begin inserting region\n");
         while (*n) {
 		memory_region_t *curr_region = container_of(*n, memory_region_t, node);
 
-		long res = (long)curr_region->addr - other_addr;
+		u_int64_t curr_addr = curr_region->addr;
 		parent = *n;
 
-		if (res < 0) {
+		if (curr_addr > new_addr) {
 			n = &((*n)->rb_left);
-		} else if (res > 0) {
+		} else if (curr_addr < new_addr) {
 			n = &((*n)->rb_right);
 		} else {
 			return 0;
@@ -175,7 +175,7 @@ int check_protections(int access, u_int8_t flags) {
 void texas_guard(void *ptr, int flags)
 {
     uint64_t addr = (uint64_t) ptr;
-    DEBUG("Checking address: %lx", addr);
+    DEBUG("Checking address: %lx with flags %x", addr, flags);
 
     // need to pass in policy->memory_map
     memory_region_t *found = lookup_region(test_policy.region_map, addr);
