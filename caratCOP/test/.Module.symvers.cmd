@@ -1,0 +1,1 @@
+cmd_/home/tnf9402/carat-linux/mini-linux/module/caratCOP/test/Module.symvers := sed 's/\.ko$$/\.o/' /home/tnf9402/carat-linux/mini-linux/module/caratCOP/test/modules.order | scripts/mod/modpost    -o /home/tnf9402/carat-linux/mini-linux/module/caratCOP/test/Module.symvers -e -i Module.symvers   -T -

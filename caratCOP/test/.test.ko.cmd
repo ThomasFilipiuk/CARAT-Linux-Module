@@ -1,0 +1,1 @@
+cmd_/home/tnf9402/carat-linux/mini-linux/module/caratCOP/test/test.ko := ld -r  -m elf_x86_64  --build-id=sha1  -T scripts/module.lds -o /home/tnf9402/carat-linux/mini-linux/module/caratCOP/test/test.ko /home/tnf9402/carat-linux/mini-linux/module/caratCOP/test/test.o /home/tnf9402/carat-linux/mini-linux/module/caratCOP/test/test.mod.o;  true

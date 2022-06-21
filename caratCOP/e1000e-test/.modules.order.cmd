@@ -1,0 +1,1 @@
+cmd_/home/tnf9402/carat-linux/mini-linux/module/caratCOP/e1000e-test/modules.order := {   echo /home/tnf9402/carat-linux/mini-linux/module/caratCOP/e1000e-test/carat-cop.ko;   echo /home/tnf9402/carat-linux/mini-linux/module/caratCOP/e1000e-test/e1000e.ko; :; } | awk '!x[$$0]++' - > /home/tnf9402/carat-linux/mini-linux/module/caratCOP/e1000e-test/modules.order
